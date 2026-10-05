@@ -7,6 +7,7 @@ import ChapterNav, { Chapter } from "./ChapterNav";
 import ScrollIndicator from "./ScrollIndicator";
 import UnderwaterAtmosphere from "./UnderwaterAtmosphere";
 import AtmosphereCanvas from "./AtmosphereCanvas";
+import ForegroundDepth from "./ForegroundDepth";
 import TrailerModal from "./TrailerModal";
 import TicketsModal from "./TicketsModal";
 
@@ -111,6 +112,7 @@ export default function HeroScene() {
   const bgImageRef = useRef<HTMLDivElement | null>(null);
   const videoViewportRef = useRef<HTMLDivElement | null>(null);
   const atmosphereRef = useRef<HTMLDivElement | null>(null);
+  const foregroundRef = useRef<HTMLDivElement | null>(null);
   const colorGradeRef = useRef<HTMLDivElement | null>(null);
 
   // States
@@ -318,7 +320,7 @@ export default function HeroScene() {
         }
       }
 
-      // 3A. SCROLL-BASED CINEMATIC ZOOM (1.02 -> 1.00 -> 1.03) & DYNAMIC COLOR GRADING
+      // 3A. 2.5D LAYER 1: BACKGROUND (Cinematic Video & Canvas Frame Buffer)
       if (videoViewportRef.current) {
         // Subtle imperceptible zoom removing flat video rectangle feeling
         let zoomScale = 1.0;
@@ -327,26 +329,33 @@ export default function HeroScene() {
         } else {
           zoomScale = 1.00 + ((progress - 0.5) / 0.5) * 0.03; // 1.00 -> 1.03
         }
-        videoViewportRef.current.style.transform = `scale(${zoomScale.toFixed(4)})`;
+        // Subtle perspective translate: background moves at slowest parallax rate (-15px)
+        const bgY = -progress * 15;
+        videoViewportRef.current.style.transform = `translate3d(0, ${bgY.toFixed(1)}px, -15px) scale(${zoomScale.toFixed(4)})`;
 
-        // Cinematic contrast & dynamic range enhancement:
-        // Surface (progress 0): contrast 1.08, brightness 1.02, saturate 1.08 (sunlit clarity)
-        // Depths (progress 1): contrast 1.14, brightness 0.94, saturate 1.04 (abyss mood)
+        // Cinematic contrast & dynamic range enhancement across depths:
         const contrastVal = (1.08 + progress * 0.06).toFixed(3);
         const brightnessVal = (1.02 - progress * 0.08).toFixed(3);
         const saturateVal = (1.08 - progress * 0.04).toFixed(3);
         videoViewportRef.current.style.filter = `contrast(${contrastVal}) brightness(${brightnessVal}) saturate(${saturateVal})`;
       }
 
-      // 3B. Dynamic color tone progression deeper into the ocean
+      // Dynamic color tone progression deeper into the ocean
       if (colorGradeRef.current) {
         colorGradeRef.current.style.opacity = (0.04 + progress * 0.16).toFixed(3);
       }
 
-      // 3C. Atmospheric depth parallax (subtle vertical shift creates cinematic 3D depth)
+      // 3B. 2.5D LAYER 2: MIDGROUND (Underwater Fog, Soft Light Rays & Slow Floating Particles)
       if (atmosphereRef.current) {
-        const pY = -progress * 26;
-        atmosphereRef.current.style.transform = `translate3d(0, ${pY.toFixed(1)}px, 0)`;
+        const midY = -progress * 38;
+        atmosphereRef.current.style.transform = `translate3d(0, ${midY.toFixed(1)}px, 12px)`;
+      }
+
+      // 3C. 2.5D LAYER 3: FOREGROUND (Macro Blurred Particles & Bokeh Bubbles close to camera lens)
+      if (foregroundRef.current) {
+        const fgY = -progress * 85;
+        const fgScale = 1.0 + progress * 0.05;
+        foregroundRef.current.style.transform = `translate3d(0, ${fgY.toFixed(1)}px, 35px) scale(${fgScale.toFixed(3)})`;
       }
 
       // 3. Stage Exit Effect when passing progress 0.98
@@ -382,9 +391,10 @@ export default function HeroScene() {
         const yOffset = -pExit * 65;
         const opacity = 1.0 - pExit;
         const blur = isReducedMotionRef.current ? 0 : pExit * 8;
-        heroContentRef.current.style.transform = `translate3d(0, ${yOffset}px, 0)`;
+        const textScale = 1.0 + pExit * 0.03;
+        heroContentRef.current.style.transform = `translate3d(0, ${yOffset.toFixed(1)}px, 20px) scale(${textScale.toFixed(3)})`;
         heroContentRef.current.style.opacity = `${opacity}`;
-        heroContentRef.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        heroContentRef.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         heroContentRef.current.style.pointerEvents =
           opacity < 0.1 ? "none" : "auto";
       }
@@ -412,9 +422,10 @@ export default function HeroScene() {
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
+        const scale = 0.98 + enter * 0.02;
         ch1Ref.current.style.opacity = `${op}`;
-        ch1Ref.current.style.transform = `translate3d(0, ${y}px, 0)`;
-        ch1Ref.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        ch1Ref.current.style.transform = `translate3d(0, ${y.toFixed(1)}px, 18px) scale(${scale.toFixed(3)})`;
+        ch1Ref.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         ch1Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
@@ -425,9 +436,10 @@ export default function HeroScene() {
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
+        const scale = 0.98 + enter * 0.02;
         ch2Ref.current.style.opacity = `${op}`;
-        ch2Ref.current.style.transform = `translate3d(0, ${y}px, 0)`;
-        ch2Ref.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        ch2Ref.current.style.transform = `translate3d(0, ${y.toFixed(1)}px, 18px) scale(${scale.toFixed(3)})`;
+        ch2Ref.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         ch2Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
 
         const words = ch2Ref.current.querySelectorAll(".word-reveal");
@@ -440,9 +452,10 @@ export default function HeroScene() {
           const wY = (1.0 - wordEnter) * 35;
           const wOp = wordEnter * (1.0 - exit);
           const wBlur = isReducedMotionRef.current ? 0 : (1.0 - wordEnter) * 5;
-          (el as HTMLElement).style.transform = `translate3d(0, ${wY}px, 0)`;
+          const wScale = 0.96 + wordEnter * 0.04;
+          (el as HTMLElement).style.transform = `translate3d(0, ${wY.toFixed(1)}px, 10px) scale(${wScale.toFixed(3)})`;
           (el as HTMLElement).style.opacity = `${wOp}`;
-          (el as HTMLElement).style.filter = wBlur > 0 ? `blur(${wBlur}px)` : "none";
+          (el as HTMLElement).style.filter = wBlur > 0 ? `blur(${wBlur.toFixed(1)}px)` : "none";
         });
       }
 
@@ -453,9 +466,10 @@ export default function HeroScene() {
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
+        const scale = 0.98 + enter * 0.02;
         ch3Ref.current.style.opacity = `${op}`;
-        ch3Ref.current.style.transform = `translate3d(0, ${y}px, 0)`;
-        ch3Ref.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        ch3Ref.current.style.transform = `translate3d(0, ${y.toFixed(1)}px, 18px) scale(${scale.toFixed(3)})`;
+        ch3Ref.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         ch3Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
@@ -466,9 +480,10 @@ export default function HeroScene() {
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 40;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
+        const scale = 0.98 + enter * 0.02;
         ch4Ref.current.style.opacity = `${op}`;
-        ch4Ref.current.style.transform = `translate3d(0, ${y}px, 0)`;
-        ch4Ref.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        ch4Ref.current.style.transform = `translate3d(0, ${y.toFixed(1)}px, 18px) scale(${scale.toFixed(3)})`;
+        ch4Ref.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         ch4Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
@@ -477,9 +492,10 @@ export default function HeroScene() {
         const enter = clamp((progress - 0.9) / 0.06, 0, 1);
         const y = (1.0 - enter) * 35;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6;
+        const scale = 0.98 + enter * 0.02;
         abyssRef.current.style.opacity = `${enter}`;
-        abyssRef.current.style.transform = `translate3d(0, ${y}px, 0)`;
-        abyssRef.current.style.filter = blur > 0 ? `blur(${blur}px)` : "none";
+        abyssRef.current.style.transform = `translate3d(0, ${y.toFixed(1)}px, 20px) scale(${scale.toFixed(3)})`;
+        abyssRef.current.style.filter = blur > 0 ? `blur(${blur.toFixed(1)}px)` : "none";
         abyssRef.current.style.pointerEvents = enter < 0.1 ? "none" : "auto";
       }
 
@@ -630,7 +646,7 @@ export default function HeroScene() {
       {/* 100% FIXED STAGE: Remains fixed on screen until progress >= 1.0 (video finished) */}
       <div
         ref={stageRef}
-        className="fixed top-0 left-0 w-full h-screen overflow-hidden bg-[#020712] z-10 transition-transform duration-300 ease-out will-change-transform"
+        className="fixed top-0 left-0 w-full h-screen overflow-hidden bg-[#020712] z-10 transition-transform duration-300 ease-out will-change-transform [perspective:1000px] [transform-style:preserve-3d]"
       >
         {/* CINEMATIC VIDEO VIEWPORT WITH SCROLL-BASED ZOOM & COLOR GRADING */}
         <div
@@ -692,6 +708,11 @@ export default function HeroScene() {
 
         {/* LAYER 2: High-DPI 4K Interactive Atmosphere Canvas */}
         <AtmosphereCanvas />
+
+        {/* LAYER 2.5D: Foreground macro blurred particles & bokeh bubbles */}
+        <div ref={foregroundRef} className="absolute inset-0 pointer-events-none z-20 will-change-transform">
+          <ForegroundDepth />
+        </div>
 
         {/* LAYER 4: Navigation Bar (Fixed Top) */}
         <Navbar
