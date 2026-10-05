@@ -40,6 +40,13 @@ const CHAPTERS: Chapter[] = [
     description:
       "Discover what lies below our living ocean.",
   },
+  {
+    id: "abyss",
+    number: "05",
+    title: "The Abyss",
+    description:
+      "Enter the midnight trench where ancient titans sleep in eternal silence.",
+  },
 ];
 
 const TOTAL_FRAMES = 240;
@@ -111,9 +118,17 @@ export default function HeroScene() {
   const scrollIndicatorRef = useRef<HTMLDivElement | null>(null);
   const bgImageRef = useRef<HTMLDivElement | null>(null);
   const videoViewportRef = useRef<HTMLDivElement | null>(null);
-  const atmosphereRef = useRef<HTMLDivElement | null>(null);
+  const distantAtmosphereRef = useRef<HTMLDivElement | null>(null);
+  const midgroundRef = useRef<HTMLDivElement | null>(null);
   const foregroundRef = useRef<HTMLDivElement | null>(null);
   const colorGradeRef = useRef<HTMLDivElement | null>(null);
+  const progressRef = useRef<number>(0);
+  const mouseRef = useRef<{
+    x: number;
+    y: number;
+    targetX: number;
+    targetY: number;
+  }>({ x: 0, y: 0, targetX: 0, targetY: 0 });
 
   // States
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
@@ -130,6 +145,14 @@ export default function HeroScene() {
     isReducedMotionRef.current = window.matchMedia(
       "(prefers-reduced-motion: reduce)"
     ).matches;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isReducedMotionRef.current) return;
+      // Normalized coordinates from -1 to 1 for subtle environmental tilt
+      mouseRef.current.targetX = (e.clientX / window.innerWidth - 0.5) * 2;
+      mouseRef.current.targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+    };
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     const video = videoRef.current;
     if (!video) return;
@@ -175,6 +198,7 @@ export default function HeroScene() {
     video.addEventListener("seeked", onSeeked);
 
     return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("play", onPlay);
       video.removeEventListener("seeking", onSeeking);
@@ -320,45 +344,63 @@ export default function HeroScene() {
         }
       }
 
-      // 3A. 2.5D LAYER 1: BACKGROUND (Cinematic Video & Canvas Frame Buffer)
+      progressRef.current = progress;
+
+      // Mouse Parallax Calculation (damped smooth follow)
+      const mx = (mouseRef.current.x += (mouseRef.current.targetX - mouseRef.current.x) * 0.05);
+      const my = (mouseRef.current.y += (mouseRef.current.targetY - mouseRef.current.y) * 0.05);
+
+      // 3A. DEPTH LAYER 1: DISTANT ATMOSPHERE (Volumetric Haze, Deep Sea Gradation, Caustics)
+      // Slowest scroll parallax (-10px) + subtle mouse shift (2px)
+      if (distantAtmosphereRef.current) {
+        const daX = mx * 2;
+        const daY = -progress * 10 + my * 1.5;
+        distantAtmosphereRef.current.style.transform = `translate3d(${daX.toFixed(1)}px, ${daY.toFixed(1)}px, -35px)`;
+      }
+
+      // 3B. DEPTH LAYER 2: BACKGROUND (Cinematic Video & Canvas Frame Buffer)
+      // Subtle scroll parallax (-18px) + continuous camera dive scale + subtle mouse shift (3.5px)
       if (videoViewportRef.current) {
-        // Subtle imperceptible zoom removing flat video rectangle feeling
         let zoomScale = 1.0;
         if (progress < 0.5) {
-          zoomScale = 1.02 - (progress / 0.5) * 0.02; // 1.02 -> 1.00
+          zoomScale = 1.015 - (progress / 0.5) * 0.015; // 1.015 -> 1.00
         } else {
-          zoomScale = 1.00 + ((progress - 0.5) / 0.5) * 0.03; // 1.00 -> 1.03
+          zoomScale = 1.00 + ((progress - 0.5) / 0.5) * 0.025; // 1.00 -> 1.025
         }
-        // Subtle perspective translate: background moves at slowest parallax rate (-15px)
-        const bgY = -progress * 15;
-        videoViewportRef.current.style.transform = `translate3d(0, ${bgY.toFixed(1)}px, -15px) scale(${zoomScale.toFixed(4)})`;
+        const bgX = mx * 3.5;
+        const bgY = -progress * 18 + my * 2.5;
+        videoViewportRef.current.style.transform = `translate3d(${bgX.toFixed(1)}px, ${bgY.toFixed(1)}px, -15px) scale(${zoomScale.toFixed(4)})`;
 
-        // Cinematic contrast & dynamic range enhancement across depths:
-        const contrastVal = (1.08 + progress * 0.06).toFixed(3);
-        const brightnessVal = (1.02 - progress * 0.08).toFixed(3);
-        const saturateVal = (1.08 - progress * 0.04).toFixed(3);
+        // Dynamic depth color absorption: Surface (crystal teal) -> Reef (deep blue) -> Depths (slate gloom) -> Abyss (deep midnight)
+        const contrastVal = (1.08 + progress * 0.08).toFixed(3);
+        const brightnessVal = (1.02 - progress * 0.22).toFixed(3);
+        const saturateVal = (1.10 - progress * 0.12).toFixed(3);
         videoViewportRef.current.style.filter = `contrast(${contrastVal}) brightness(${brightnessVal}) saturate(${saturateVal})`;
       }
 
       // Dynamic color tone progression deeper into the ocean
       if (colorGradeRef.current) {
-        colorGradeRef.current.style.opacity = (0.04 + progress * 0.16).toFixed(3);
+        colorGradeRef.current.style.opacity = (0.04 + progress * 0.24).toFixed(3);
       }
 
-      // 3B. 2.5D LAYER 2: MIDGROUND (Underwater Fog, Soft Light Rays & Slow Floating Particles)
-      if (atmosphereRef.current) {
-        const midY = -progress * 38;
-        atmosphereRef.current.style.transform = `translate3d(0, ${midY.toFixed(1)}px, 12px)`;
+      // 3C. DEPTH LAYER 3: MIDGROUND (Atmospheric Underwater Elements, Floating Particles & Subtle Bubbles)
+      // Normal scroll parallax (-42px) + subtle mouse shift (7px)
+      if (midgroundRef.current) {
+        const midX = mx * 7;
+        const midY = -progress * 42 + my * 5;
+        midgroundRef.current.style.transform = `translate3d(${midX.toFixed(1)}px, ${midY.toFixed(1)}px, 15px)`;
       }
 
-      // 3C. 2.5D LAYER 3: FOREGROUND (Macro Blurred Particles & Bokeh Bubbles close to camera lens)
+      // 3D. DEPTH LAYER 4: FOREGROUND (Macro Blurred Particles & Bokeh Bubbles close to camera lens)
+      // Faster scroll parallax (-76px) + subtle mouse shift (12px)
       if (foregroundRef.current) {
-        const fgY = -progress * 85;
-        const fgScale = 1.0 + progress * 0.05;
-        foregroundRef.current.style.transform = `translate3d(0, ${fgY.toFixed(1)}px, 35px) scale(${fgScale.toFixed(3)})`;
+        const fgX = mx * 12;
+        const fgY = -progress * 76 + my * 8;
+        const fgScale = 1.0 + progress * 0.04;
+        foregroundRef.current.style.transform = `translate3d(${fgX.toFixed(1)}px, ${fgY.toFixed(1)}px, 40px) scale(${fgScale.toFixed(3)})`;
       }
 
-      // 3. Stage Exit Effect when passing progress 0.98
+      // 3E. Stage Exit Effect when passing progress 0.98
       if (progress >= 0.98 && currentScroll > totalScrollable) {
         const exitProgress = clamp(
           (currentScroll - totalScrollable) / (window.innerHeight * 0.5),
@@ -415,10 +457,10 @@ export default function HeroScene() {
           pScroll < 0.1 ? "none" : "auto";
       }
 
-      // 6. Chapter 01: THE SURFACE (Progress 0.10 to 0.28)
+      // 6. Chapter 01: THE SURFACE (Progress 0.08 to 0.24)
       if (ch1Ref.current) {
-        const enter = clamp((progress - 0.1) / 0.06, 0, 1);
-        const exit = clamp((progress - 0.24) / 0.05, 0, 1);
+        const enter = clamp((progress - 0.08) / 0.06, 0, 1);
+        const exit = clamp((progress - 0.22) / 0.04, 0, 1);
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
@@ -429,10 +471,10 @@ export default function HeroScene() {
         ch1Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
-      // 7. Chapter 02: MARINE LIFE (Progress 0.28 to 0.52) - Word-by-word reveal
+      // 7. Chapter 02: MARINE LIFE (Progress 0.26 to 0.48) - Word-by-word reveal
       if (ch2Ref.current) {
-        const enter = clamp((progress - 0.28) / 0.07, 0, 1);
-        const exit = clamp((progress - 0.48) / 0.05, 0, 1);
+        const enter = clamp((progress - 0.26) / 0.06, 0, 1);
+        const exit = clamp((progress - 0.44) / 0.05, 0, 1);
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
@@ -445,7 +487,7 @@ export default function HeroScene() {
         const words = ch2Ref.current.querySelectorAll(".word-reveal");
         words.forEach((el, idx) => {
           const wordEnter = clamp(
-            (progress - (0.28 + idx * 0.018)) / 0.035,
+            (progress - (0.26 + idx * 0.016)) / 0.035,
             0,
             1
           );
@@ -459,10 +501,10 @@ export default function HeroScene() {
         });
       }
 
-      // 8. Chapter 03: THE DEPTHS (Progress 0.52 to 0.74)
+      // 8. Chapter 03: THE DEPTHS (Progress 0.48 to 0.68)
       if (ch3Ref.current) {
-        const enter = clamp((progress - 0.52) / 0.07, 0, 1);
-        const exit = clamp((progress - 0.7) / 0.05, 0, 1);
+        const enter = clamp((progress - 0.48) / 0.06, 0, 1);
+        const exit = clamp((progress - 0.64) / 0.05, 0, 1);
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 45;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
@@ -473,10 +515,10 @@ export default function HeroScene() {
         ch3Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
-      // 9. Chapter 04: OUR PLANET / BIOLUMINESCENCE (Progress 0.74 to 0.90)
+      // 9. Chapter 04: OUR PLANET / BIOLUMINESCENCE (Progress 0.68 to 0.86)
       if (ch4Ref.current) {
-        const enter = clamp((progress - 0.74) / 0.06, 0, 1);
-        const exit = clamp((progress - 0.88) / 0.04, 0, 1);
+        const enter = clamp((progress - 0.68) / 0.06, 0, 1);
+        const exit = clamp((progress - 0.82) / 0.04, 0, 1);
         const op = enter * (1.0 - exit);
         const y = (1.0 - enter) * 45 - exit * 40;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6 + exit * 6;
@@ -487,9 +529,9 @@ export default function HeroScene() {
         ch4Ref.current.style.pointerEvents = op < 0.1 ? "none" : "auto";
       }
 
-      // 10. FINAL CINEMATIC MOMENT: THE ABYSS (Progress 0.90 to 1.00)
+      // 10. FINAL CINEMATIC MOMENT: THE ABYSS (Progress 0.86 to 1.00)
       if (abyssRef.current) {
-        const enter = clamp((progress - 0.9) / 0.06, 0, 1);
+        const enter = clamp((progress - 0.86) / 0.06, 0, 1);
         const y = (1.0 - enter) * 35;
         const blur = isReducedMotionRef.current ? 0 : (1.0 - enter) * 6;
         const scale = 0.98 + enter * 0.02;
@@ -499,16 +541,18 @@ export default function HeroScene() {
         abyssRef.current.style.pointerEvents = enter < 0.1 ? "none" : "auto";
       }
 
-      // 11. Synchronize ChapterNav Active Index
+      // 11. Synchronize ChapterNav Active Index (5 Chapters: 01 Surface, 02 Marine Life, 03 The Depths, 04 Our Planet, 05 The Abyss)
       let newChapter = 0;
-      if (progress < 0.28) {
+      if (progress < 0.25) {
         newChapter = 0; // 01 The Surface
-      } else if (progress < 0.52) {
+      } else if (progress < 0.47) {
         newChapter = 1; // 02 Marine Life
-      } else if (progress < 0.74) {
+      } else if (progress < 0.67) {
         newChapter = 2; // 03 The Depths
-      } else {
+      } else if (progress < 0.85) {
         newChapter = 3; // 04 Our Planet
+      } else {
+        newChapter = 4; // 05 The Abyss
       }
 
       if (newChapter !== activeChapterRef.current) {
@@ -553,8 +597,8 @@ export default function HeroScene() {
     const scrollTop = window.scrollY + rect.top;
     const totalScrollable = rect.height - window.innerHeight;
 
-    // Chapter scroll percentages: 01: 0.18, 02: 0.40, 03: 0.63, 04: 0.82
-    const targetPercentages = [0.18, 0.4, 0.63, 0.82];
+    // Chapter scroll percentages: 01: 0.16, 02: 0.36, 03: 0.58, 04: 0.76, 05: 0.94
+    const targetPercentages = [0.16, 0.36, 0.58, 0.76, 0.94];
     const targetY = scrollTop + totalScrollable * targetPercentages[index];
 
     window.scrollTo({
@@ -646,12 +690,20 @@ export default function HeroScene() {
       {/* 100% FIXED STAGE: Remains fixed on screen until progress >= 1.0 (video finished) */}
       <div
         ref={stageRef}
-        className="fixed top-0 left-0 w-full h-screen overflow-hidden bg-[#020712] z-10 transition-transform duration-300 ease-out will-change-transform [perspective:1000px] [transform-style:preserve-3d]"
+        className="fixed top-0 left-0 w-full h-screen overflow-hidden bg-[#020712] z-10 transition-transform duration-300 ease-out will-change-transform [perspective:1200px] [transform-style:preserve-3d]"
       >
-        {/* CINEMATIC VIDEO VIEWPORT WITH SCROLL-BASED ZOOM & COLOR GRADING */}
+        {/* DEPTH LAYER 1: DISTANT ATMOSPHERE (Volumetric Haze, God Rays, Deep Sea Gradation, Caustics) */}
+        <div
+          ref={distantAtmosphereRef}
+          className="absolute inset-0 pointer-events-none z-0 will-change-transform"
+        >
+          <UnderwaterAtmosphere progressRef={progressRef} />
+        </div>
+
+        {/* DEPTH LAYER 2: BACKGROUND (Cinematic Video + Hardware-Accelerated 4K Frame Canvas) */}
         <div
           ref={videoViewportRef}
-          className="absolute inset-0 w-full h-full pointer-events-none z-0 will-change-transform transition-[filter] duration-200"
+          className="absolute inset-0 w-full h-full pointer-events-none z-[1] will-change-transform transition-[filter] duration-200"
         >
           {/* LAYER 0A: Scroll-Controlled Cinematic Underwater Video (DOM Timeline) */}
           <video
@@ -695,22 +747,25 @@ export default function HeroScene() {
           </div>
         </div>
 
-        {/* LAYER 0D: Dynamic Color Grade & Deep Oceanic Tint Progression */}
+        {/* LAYER 2B: Dynamic Color Grade & Deep Oceanic Tint Progression */}
         <div
           ref={colorGradeRef}
           className="absolute inset-0 pointer-events-none z-[2] mix-blend-color bg-gradient-to-b from-sky-400/40 via-blue-900/50 to-cyan-950/70 transition-opacity duration-300 opacity-[0.04]"
         />
 
-        {/* LAYER 1: Atmospheric Caustics, Volumetric Sun Rays & Vignettes with Subtle Parallax */}
-        <div ref={atmosphereRef} className="absolute inset-0 pointer-events-none z-10 will-change-transform">
-          <UnderwaterAtmosphere />
+        {/* DEPTH LAYER 3: MIDGROUND (Atmospheric Underwater Elements, Floating Particles & Subtle Bubbles) */}
+        <div
+          ref={midgroundRef}
+          className="absolute inset-0 pointer-events-none z-10 will-change-transform"
+        >
+          <AtmosphereCanvas />
         </div>
 
-        {/* LAYER 2: High-DPI 4K Interactive Atmosphere Canvas */}
-        <AtmosphereCanvas />
-
-        {/* LAYER 2.5D: Foreground macro blurred particles & bokeh bubbles */}
-        <div ref={foregroundRef} className="absolute inset-0 pointer-events-none z-20 will-change-transform">
+        {/* DEPTH LAYER 4: FOREGROUND (Macro Blurred Particles & Bokeh Bubbles close to camera lens) */}
+        <div
+          ref={foregroundRef}
+          className="absolute inset-0 pointer-events-none z-20 will-change-transform"
+        >
           <ForegroundDepth />
         </div>
 
@@ -918,16 +973,20 @@ export default function HeroScene() {
           className="absolute inset-0 z-30 max-w-[1720px] w-full mx-auto px-8 sm:px-12 md:px-16 flex flex-col justify-center items-center text-center opacity-0 pointer-events-none transition-transform will-change-transform"
         >
           <div className="max-w-2xl flex flex-col items-center">
-            <span className="text-xs uppercase font-mono tracking-[0.4em] text-cyan-300 font-medium mb-4">
-              EXPEDITION COMPLETE
-            </span>
+            <div className="flex items-center gap-4 mb-4">
+              <span className="text-xs uppercase font-mono tracking-[0.3em] text-cyan-300 font-medium">
+                05 &bull; THE ABYSS
+              </span>
+              <div className="w-16 h-[1px] bg-gradient-to-r from-cyan-400 to-transparent" />
+            </div>
 
-            <h2 className="font-cinzel text-6xl sm:text-8xl font-normal text-white tracking-wider leading-none mb-6 drop-shadow-[0_0_40px_rgba(56,189,248,0.5)]">
-              THE ABYSS
+            <h2 className="font-cinzel text-5xl sm:text-7xl font-normal text-white leading-[1.05] mb-5 drop-shadow-[0_4px_24px_rgba(0,0,0,0.95)]">
+              THE MIDNIGHT
+              <span className="block text-ocean-glow">TRENCH.</span>
             </h2>
 
-            <p className="text-white/70 font-sans text-base sm:text-lg font-light tracking-widest uppercase mb-8">
-              Keep exploring.
+            <p className="text-white/75 font-sans text-base sm:text-lg font-light leading-relaxed max-w-md mb-8 drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
+              Where light has never reached and ancient subterranean monoliths sleep in profound oceanic silence.
             </p>
 
             <button
