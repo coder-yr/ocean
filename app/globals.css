@@ -1,26 +1,141 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #020712;
+  --foreground: #f0fdf4;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@theme {
+  --font-serif: var(--font-cinzel), serif;
+  --font-sans: var(--font-outfit), sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html, body {
+  background-color: #020712;
+  color: #f8fafc;
+  font-family: var(--font-outfit), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: clip;
+  margin: 0;
+  padding: 0;
+}
+
+/* Custom Typography Utility */
+.font-cinzel {
+  font-family: var(--font-cinzel), Georgia, serif;
+}
+
+.font-outfit {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+/* Bioluminescent text gradient */
+.text-ocean-glow {
+  background: linear-gradient(135deg, #a7f3d0 0%, #38bdf8 45%, #60a5fa 75%, #c084fc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 25px rgba(56, 189, 248, 0.45));
+}
+
+/* Glassmorphism pill styling */
+.glass-pill {
+  background: rgba(12, 27, 49, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.glass-pill-glow {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.22) 0%, rgba(30, 58, 138, 0.35) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 25px -4px rgba(6, 182, 212, 0.35), inset 0 0 15px 0 rgba(255, 255, 255, 0.1);
+}
+
+.glass-pill-glow:hover {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.38) 0%, rgba(30, 58, 138, 0.55) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 35px 0 rgba(6, 182, 212, 0.55), inset 0 0 20px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Sunbeam & Water Caustics Overlay */
+@keyframes causticShift {
+  0% {
+    transform: scale(1) translate(0, 0) rotate(0deg);
+    opacity: 0.15;
+  }
+  50% {
+    transform: scale(1.05) translate(-1%, 1.5%) rotate(0.5deg);
+    opacity: 0.25;
+  }
+  100% {
+    transform: scale(1) translate(0, 0) rotate(0deg);
+    opacity: 0.15;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-caustics {
+  animation: causticShift 12s ease-in-out infinite;
+}
+
+/* Floating animation for jellyfish / particles */
+@keyframes gentleDrift {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(1deg);
+  }
+}
+
+.animate-drift {
+  animation: gentleDrift 7s ease-in-out infinite;
+}
+
+@keyframes gentleDriftSlow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-20px) rotate(-1.5deg);
+  }
+}
+
+.animate-drift-slow {
+  animation: gentleDriftSlow 11s ease-in-out infinite;
+}
+
+/* Pulse Glow animation */
+@keyframes cyanPulse {
+  0%, 100% {
+    opacity: 0.7;
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.9);
+  }
+}
+
+.animate-cyan-pulse {
+  animation: cyanPulse 2.5s ease-in-out infinite;
+}
+
+/* Vertical Scrubber Animation */
+@keyframes scrubVertical {
+  0% {
+    top: 15%;
+  }
+  50% {
+    top: 75%;
+  }
+  100% {
+    top: 15%;
+  }
+}
+
+.animate-scrubber {
+  animation: scrubVertical 3s ease-in-out infinite;
 }
